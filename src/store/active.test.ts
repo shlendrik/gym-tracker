@@ -88,4 +88,31 @@ describe("активная тренировка", () => {
     expect(active.entries[0].sets).toHaveLength(3);
     expect(active.entries[0].sets[0].reps).toBe(8);
   });
+
+  it("в тренировке по плану число подходов и повторы из плана, вес — с прошлой тренировки", () => {
+    // прошлая тренировка: жим 70 кг, всего один подход
+    useWorkouts.getState().add({
+      id: "w0",
+      date: new Date().toISOString(),
+      durationSec: 600,
+      entries: [
+        {
+          id: "e0",
+          exerciseId: "bench-press",
+          sets: [{ id: "s0", reps: 5, weight: 70, done: true }],
+        },
+      ],
+    });
+    useTemplates.getState().add({
+      id: "t2",
+      name: "Грудь",
+      updatedAt: new Date().toISOString(),
+      items: [{ exerciseId: "bench-press", targetSets: 4, targetReps: 10 }],
+    });
+    useActive.getState().start("t2");
+
+    const sets = useActive.getState().active!.entries[0].sets;
+    expect(sets).toHaveLength(4); // как в плане, а не как в прошлый раз
+    expect(sets.every((s) => s.reps === 10 && s.weight === 70 && !s.done)).toBe(true);
+  });
 });

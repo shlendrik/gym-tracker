@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   entryTonnage,
   formatDuration,
@@ -9,8 +10,8 @@ import { useActive } from "../store/active";
 import { useExerciseMap } from "../store/exercises";
 import { confirmAction, haptic, notify } from "../telegram";
 import type { ActiveWorkout as ActiveWorkoutData, SetEntry } from "../types";
+import ActionBar from "../ui/ActionBar";
 import ExercisePicker from "../ui/ExercisePicker";
-import MainAction from "../ui/MainAction";
 import NumberInput from "../ui/NumberInput";
 
 function useElapsed(startedAt: string) {
@@ -40,9 +41,16 @@ function ActiveView({ active }: { active: ActiveWorkoutData }) {
   const exerciseMap = useExerciseMap();
   const [pickerOpen, setPickerOpen] = useState(false);
   const elapsed = useElapsed(active.startedAt);
+  const navigate = useNavigate();
 
   const hasDone = active.entries.some((e) => e.sets.some((s) => s.done));
   const hasUndone = active.entries.some((e) => e.sets.some((s) => !s.done));
+  const finishHint =
+    active.entries.length === 0
+      ? "Добавьте упражнение, затем отмечайте выполненные подходы галочкой"
+      : !hasDone
+        ? "Отметьте галочкой хотя бы один выполненный подход"
+        : undefined;
 
   const onFinish = async () => {
     if (hasUndone) {
@@ -57,6 +65,7 @@ function ActiveView({ active }: { active: ActiveWorkoutData }) {
       return;
     }
     haptic.success();
+    navigate(`/saved/${saved.id}`);
   };
 
   const onCancel = async () => {
@@ -72,7 +81,7 @@ function ActiveView({ active }: { active: ActiveWorkoutData }) {
   return (
     <div className="page">
       <div className="row">
-        <h1 className="h1" style={{ marginBottom: 8 }}>
+        <h1 className="h1 clamp-2" style={{ marginBottom: 8 }}>
           {active.name ?? "Тренировка"}
         </h1>
         <button className="btn btn-ghost btn-danger btn-sm" onClick={onCancel}>
@@ -153,7 +162,12 @@ function ActiveView({ active }: { active: ActiveWorkoutData }) {
         + Добавить упражнение
       </button>
 
-      <MainAction text="Завершить тренировку" onClick={onFinish} visible={hasDone} />
+      <ActionBar
+        text="Завершить тренировку"
+        onClick={onFinish}
+        disabled={!hasDone}
+        hint={finishHint}
+      />
 
       {pickerOpen && (
         <ExercisePicker

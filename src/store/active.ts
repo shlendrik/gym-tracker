@@ -6,6 +6,7 @@ import type {
   ActiveWorkout,
   ExerciseEntry,
   SetEntry,
+  TemplateItem,
   Workout,
 } from "../types";
 import { useTemplates } from "./templates";
@@ -35,15 +36,23 @@ const newSet = (reps = DEFAULT_REPS, weight = 0): SetEntry => ({
   done: false,
 });
 
-/** Подходы для нового упражнения: берём значения с прошлой тренировки, иначе пустые по умолчанию. */
-function initialSets(
-  exerciseId: string,
-  fallbackCount = 1,
-  fallbackReps = DEFAULT_REPS
-): SetEntry[] {
+/** Подходы для нового упражнения: берём значения с прошлой тренировки, иначе один пустой подход. */
+function initialSets(exerciseId: string): SetEntry[] {
   const last = lastSetsFor(useWorkouts.getState().workouts, exerciseId);
   if (last) return last.map((s) => newSet(s.reps, s.weight));
-  return Array.from({ length: fallbackCount }, () => newSet(fallbackReps, 0));
+  return [newSet()];
+}
+
+/**
+ * Подходы из плана: число подходов и повторы задаёт план,
+ * рабочий вес подтягивается с прошлой тренировки (если упражнение уже выполнялось).
+ */
+function setsFromTemplate(item: TemplateItem): SetEntry[] {
+  const last = lastSetsFor(useWorkouts.getState().workouts, item.exerciseId);
+  return Array.from({ length: item.targetSets }, (_, i) => {
+    const ref = last ? last[Math.min(i, last.length - 1)] : undefined;
+    return newSet(item.targetReps, ref?.weight ?? 0);
+  });
 }
 
 const mapEntry = (
@@ -66,7 +75,7 @@ export const useActive = create<State>((set, get) => ({
       ? template.items.map((item) => ({
           id: uid(),
           exerciseId: item.exerciseId,
-          sets: initialSets(item.exerciseId, item.targetSets, item.targetReps),
+          sets: setsFromTemplate(item),
         }))
       : [];
     set({
